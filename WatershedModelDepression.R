@@ -62,19 +62,30 @@ names(data)
 
 #### depressie variabelen toevoegen
 
-datadep <- esm[,c(1,118:142)]
+datadep <- esm[,c(1,13:43,118:142)]
 
 for (i in 2:ncol(datadep)){                            # Recode data. Character factors to numeric 
   datadep[,i] <- as.integer(datadep[,i])
 }
 
-View(datadep)
+# Select subject nrs
 
+datadep<- datadep %>% group_by(subjnr) %>% filter(n() > 1)
+datadep <- as.data.frame(datadep)
+
+length(unique(datadep$subjnr))                         # Selecting only subjecnrs with > 1 observation, we now have 603 unique subjectnrs
+
+# remove NA's
+
+datadep[,2:ncol(datadep)] %>% summarise_each(funs(sum(is.na(.)))) # Check NA's per variable
+
+missings <- datadep[,] %>% summarise_each(funs(sum(is.na(.))))
+## Heel veel missings hoe gaan we daarmee om bij de depressie variabelen
 
 ## sem modellen
 library("lavaan")
 
-#Reflective one-factor model for affect states: Fits poorly
+#Reflective one-factor model for affect states: Fits poorly (p < .05, RMSEA = 0.15, CFI .75)
 ASonefactormodel <-
   '
 aslv=~ piekerde + opgewkt + onzeker + ontspann + boosgei + tevreden + energiek + nlekker
@@ -83,10 +94,19 @@ aslv=~ piekerde + opgewkt + onzeker + ontspann + boosgei + tevreden + energiek +
 fitASonefactormodel <- cfa(ASonefactormodel, data=data,estimator='MLM',se='robust',std.lv=T,std.ov=TRUE)
 summary(fitASonefactormodel,fit.measures=TRUE,standardized=T)
 
+## Reflective one-factor model for depression vars: Fits poorly( p < .05, RMSEA = .15, CFI = .65)
 
+DPonefactormodel <-
+  '
+  deplv =~ dep1 + dep2 + dep3 + dep4 + dep5 + psy1 + psy2 + psy3 + psy4 + psy5 + par1 + par2 + par3 + par4 + par5 
+           + ang1 + ang2 + ang3 + ang4 + ang5
+'
 
+fitDPonefactormodel <- cfa(DPonefactormodel, data=datadep, estimator="MLM", se='robust', std.lv = TRUE, std.ov = TRUE)
 
+summary(fitDPonefactormodel, fit.measures=TRUE, standardized = TRUE)
 
+# 
 
 
 
