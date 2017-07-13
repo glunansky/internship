@@ -1,7 +1,7 @@
 ###################################
 ## Watershed Depression Project  ##
 ## Version 1                     ##  
-## Gaby Lunansky, 20-05-2017     ##
+## Gaby Lunansky                ##
 ###################################
 
 require("dplyr")
@@ -18,7 +18,7 @@ for (i in 2:ncol(data.af)){                            # Recode data. Character 
 
 ## SELECT SUBJECTNRS ## 
 
-length(unique(data.af[,1]))                            # 12011 unique subject numbers...
+length(unique(data.af[,1]))                            # 12011 unique subject numbers
 
 data.af<- data.af %>% group_by(subjnr) %>% filter(n() > 1)
 data.af <- as.data.frame(data.af)
@@ -53,61 +53,57 @@ datadef<- data.af[, - c(4,8,10,12,14,15, 19,28,29,32)] # Proposal: removing vari
 ncol(datadef) - 1                                  # Left with 21 affect-state variables
 names(datadef)
 
-##### Definitieve affect metingen:
+##### Definitieve data 
+#"subjnr"   "piekerde" "opgewkt"  "onzeker"  "ontspann" "boosgei"  "tevreden" "energiek" "nlekker" 
+# "voegejaa" "rustig"   "enthous" "dep1" "psy1" "par1" "ang1" "dep1now" "dep1past" 
 
-data <- datadef[,-c(2,3,10,11,12,13,14,15,16,21)]
-View(esm)
-names(data)
+data <- esm[,c(1, 16, 17, 18, 20, 22, 24, 35, 36, 37, 38, 42, 118, 119, 120, 121, 165, 166)]
+dim(data)
 
-
-#### depressie variabelen toevoegen
-
-datadep <- esm[,c(1,13:43,118:142)]
-
-for (i in 2:ncol(datadep)){                            # Recode data. Character factors to numeric 
-  datadep[,i] <- as.integer(datadep[,i])
+for (i in 2:ncol(data)){                            # Recode data. Character factors to numeric 
+  data[,i] <- as.integer(data[,i])
 }
 
-# Select subject nrs
+data<- data %>% group_by(subjnr) %>% filter(n() > 1) # Selecting only subjecnrs with > 1 observation, we now have 603 unique subjectnrs
+data <- as.data.frame(data)
 
-datadep<- datadep %>% group_by(subjnr) %>% filter(n() > 1)
-datadep <- as.data.frame(datadep)
+length(unique(data$subjnr))    
 
-length(unique(datadep$subjnr))                         # Selecting only subjecnrs with > 1 observation, we now have 603 unique subjectnrs
 
-# remove NA's
 
-datadep[,2:ncol(datadep)] %>% summarise_each(funs(sum(is.na(.)))) # Check NA's per variable
 
-missings <- datadep[,] %>% summarise_each(funs(sum(is.na(.))))
-## Heel veel missings hoe gaan we daarmee om bij de depressie variabelen
+## BUILD SEM MODELS
+## Level 1: Measurement model for depression (fits reasonably)
 
-## sem modellen
-library("lavaan")
+DPmodel <-
+  '
+deplv =~ dep1 + psy1 +  par1 + ang1 
+'
 
-#Reflective one-factor model for affect states: Fits poorly (p < .05, RMSEA = 0.15, CFI .75)
+fitDPmodel <- cfa(DPmodel, data=data, estimator="MLM", se='robust', std.lv = TRUE, std.ov = TRUE)
+
+summary(fitDPmodel, fit.measures=TRUE, standardized = TRUE)
+
+
+## one factor model for affect-state variables (fits poorly)
 ASonefactormodel <-
   '
 aslv=~ piekerde + opgewkt + onzeker + ontspann + boosgei + tevreden + energiek + nlekker
-        + voegejaa + rustig + enthous
++ voegejaa + rustig + enthous
 '
 fitASonefactormodel <- cfa(ASonefactormodel, data=data,estimator='MLM',se='robust',std.lv=T,std.ov=TRUE)
 summary(fitASonefactormodel,fit.measures=TRUE,standardized=T)
 
-## Reflective one-factor model for depression vars: Fits poorly( p < .05, RMSEA = .15, CFI = .65)
 
-DPonefactormodel <-
-  '
-  deplv =~ dep1 + dep2 + dep3 + dep4 + dep5 + psy1 + psy2 + psy3 + psy4 + psy5 + par1 + par2 + par3 + par4 + par5 
-           + ang1 + ang2 + ang3 + ang4 + ang5
+# Watershed / MIMIC model
+MIMIC <-
 '
-
-fitDPonefactormodel <- cfa(DPonefactormodel, data=datadep, estimator="MLM", se='robust', std.lv = TRUE, std.ov = TRUE)
-
-summary(fitDPonefactormodel, fit.measures=TRUE, standardized = TRUE)
-
-# 
-
-
+deplv =~ dep1 + psy1 +  par1 + ang1 
+deplv ~ piekerde + opgewkt + onzeker + ontspann + boosgei + tevreden + energiek + nlekker
++ voegejaa + rustig + enthous
+'
+fitMIMIC <- cfa(MIMIC, data=data, estimator="MLM", se='robust', std.lv=T, std.ov=T)
+summary(fitMIMIC, fit.measures=T, standardized=T, rsquare=T)
+semPaths(fitMIMIC," std",edge.label.cex = 0.5,curvePivot=T)
 
 
