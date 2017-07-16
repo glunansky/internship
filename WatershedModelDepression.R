@@ -5,6 +5,8 @@
 ###################################
 
 require("dplyr")
+require("lavaan")
+require("semPlot")
 
 load("esmdata.RData")
 
@@ -75,6 +77,8 @@ length(unique(data$subjnr))
 ## BUILD SEM MODELS
 ## Level 1: Measurement model for depression (fits reasonably)
 
+
+
 DPmodel <-
   '
 deplv =~ dep1 + psy1 +  par1 + ang1 
@@ -98,12 +102,16 @@ summary(fitASonefactormodel,fit.measures=TRUE,standardized=T)
 # Watershed / MIMIC model
 MIMIC <-
 '
-deplv =~ dep1 + psy1 +  par1 + ang1 
-deplv ~ piekerde + opgewkt + onzeker + ontspann + boosgei + tevreden + energiek + nlekker
+depression =~ dep1 + psy1 +  par1 + ang1 
+depression ~ piekerde + opgewkt + onzeker + ontspann + boosgei + tevreden + energiek + nlekker
 + voegejaa + rustig + enthous
 '
 fitMIMIC <- cfa(MIMIC, data=data, estimator="MLM", se='robust', std.lv=T, std.ov=T)
 summary(fitMIMIC, fit.measures=T, standardized=T, rsquare=T)
-semPaths(fitMIMIC," std",edge.label.cex = 0.5,curvePivot=T)
 
+# Diagram of the model
+semPaths(fitMIMIC,what="diagram",rotation=3,edge.label.cex = 0.5, edge.color="black", curvePivot=T, exoCov=F,nCharNodes=0, intercepts=F, residuals=F)
+
+# The fitted model
+semPaths(fitMIMIC,what="std",rotation=3,edge.label.cex = 0.5, curvePivot=T, exoCov=F,nCharNodes=0, intercepts=F, residuals=F)
 
